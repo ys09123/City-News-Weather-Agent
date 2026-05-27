@@ -4,230 +4,337 @@ import os, requests, json
 
 load_dotenv()
 
-# ── Page config ──────────────────────────────────────────────────────────
 st.set_page_config(page_title="City Agent", page_icon="🏙️", layout="centered")
 
-# ── CSS ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, [class*="css"] {
-  font-family: 'Outfit', sans-serif;
-  background: #07080a;
-  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  background: #17212b;
+  color: #e8e8e8;
 }
-.stApp { background: #07080a; }
+.stApp { background: #17212b; }
+#MainMenu, footer, header { visibility: hidden; }
 
-/* ── Header ── */
-.agent-header {
+.block-container {
+  max-width: 680px !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: #212d3b;
+  border-bottom: 1px solid #1a2535;
+  padding: 0.7rem 1.2rem;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 2rem 0 1.2rem;
-  border-bottom: 1px solid #1e2533;
-  margin-bottom: 1.5rem;
-}
-.agent-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: #22d3a5;
-  box-shadow: 0 0 8px #22d3a5;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-.agent-title {
-  font-family: 'Space Mono', monospace;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #e2e8f0;
-  letter-spacing: 0.05em;
-}
-.agent-sub {
-  font-size: 0.72rem;
-  color: #4a5568;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-top: 2px;
-}
-
-/* ── Chat messages ── */
-.msg-row {
-  display: flex;
   gap: 12px;
-  margin-bottom: 1.2rem;
-  align-items: flex-start;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.3);
 }
-.msg-row.user { flex-direction: row-reverse; }
-
-.avatar {
-  width: 34px; height: 34px;
-  border-radius: 8px;
+.tb-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b5278, #3a7bd5);
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
 }
-.avatar.bot { background: #0f2027; border: 1px solid #22d3a5; color: #22d3a5; }
-.avatar.user { background: #1a1f2e; border: 1px solid #3b82f6; color: #93c5fd; }
+.tb-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  line-height: 1.2;
+}
+.tb-status {
+  font-size: 0.72rem;
+  color: #5bbf82;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+}
+.tb-dot { width: 6px; height: 6px; border-radius: 50%; background: #5bbf82; display:inline-block; }
+.tb-pills { margin-left: auto; display: flex; gap: 6px; }
+.tb-pill {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: #7ab3d4;
+  background: rgba(58,123,213,0.12);
+  border: 1px solid rgba(58,123,213,0.25);
+  border-radius: 99px;
+  padding: 0.18rem 0.6rem;
+  letter-spacing: 0.02em;
+}
 
-.bubble {
-  max-width: 78%;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  font-size: 0.92rem;
-  line-height: 1.6;
-}
-.bubble.bot {
-  background: #0d1117;
-  border: 1px solid #1e2533;
-  border-top-left-radius: 2px;
-  color: #cbd5e1;
-}
-.bubble.user {
-  background: #1e3a5f;
-  border: 1px solid #2563eb44;
-  border-top-right-radius: 2px;
-  color: #e2e8f0;
-  text-align: right;
+/* ── Chat area ── */
+.chat-area {
+  padding: 1rem 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* ── Tool call approval card ── */
-.approval-card {
-  background: #0d1117;
-  border: 1px solid #f59e0b44;
-  border-left: 3px solid #f59e0b;
-  border-radius: 10px;
-  padding: 1.1rem 1.3rem;
-  margin: 1rem 0;
+/* ── Date stamp ── */
+.datesep {
+  text-align: center;
+  margin: 0.8rem 0;
 }
-.approval-tag {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
-  color: #f59e0b;
-  letter-spacing: 0.1em;
+.datesep span {
+  font-size: 0.68rem;
+  color: #8a9ab0;
+  background: #1e2d3d;
+  border-radius: 8px;
+  padding: 0.22rem 0.75rem;
+}
+
+/* ── Message rows ── */
+.row-out {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1px 0;
+}
+.row-in {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 1px 0;
+}
+.in-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b5278, #3a7bd5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.in-avatar.ghost { background: transparent; }
+
+/* ── Bubbles ── */
+.bbl {
+  max-width: 72%;
+  padding: 0.52rem 0.85rem 0.45rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  word-break: break-word;
+  position: relative;
+}
+.bbl-in {
+  background: #182533;
+  color: #e8e8e8;
+  border-radius: 0 10px 10px 10px;
+}
+.bbl-out {
+  background: #2b5278;
+  color: #e8e8e8;
+  border-radius: 10px 10px 0 10px;
+}
+.bbl-time {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.35);
+  float: right;
+  margin-left: 10px;
+  margin-top: 3px;
+}
+.bbl-out .bbl-time { color: rgba(255,255,255,0.45); }
+
+/* ── Tool result card ── */
+.tool-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 3px 0;
+}
+.tool-card {
+  max-width: 72%;
+  background: #1e2d3d;
+  border: 1px solid #2a3f57;
+  border-left: 3px solid;
+  border-radius: 0 10px 10px 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  color: #b0c4d8;
+  line-height: 1.55;
+}
+.tool-card.weather { border-left-color: #f59e0b; }
+.tool-card.news    { border-left-color: #3a7bd5; }
+.tool-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+.tool-label.weather { color: #f59e0b; }
+.tool-label.news    { color: #3a7bd5; }
+
+/* ── Denied ── */
+.denied-row {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0;
+}
+.denied-pill {
+  font-size: 0.7rem;
+  color: #8a9ab0;
+  background: #1e2d3d;
+  border-radius: 8px;
+  padding: 0.22rem 0.85rem;
+}
+
+/* ── Approval card ── */
+.appr-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.appr-card {
+  max-width: 72%;
+  background: #1e2d3d;
+  border: 1px solid #2a3f57;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 10px 10px 10px;
+  padding: 0.75rem 0.9rem;
+}
+.appr-tag {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #f59e0b;
   margin-bottom: 0.5rem;
 }
-.approval-tool {
-  font-family: 'Space Mono', monospace;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fcd34d;
-  margin-bottom: 0.3rem;
+.appr-fn {
+  font-family: 'Courier New', monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin-bottom: 0.4rem;
 }
-.approval-args {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.8rem;
-  color: #94a3b8;
-  background: #060810;
+.appr-args {
+  font-family: 'Courier New', monospace;
+  font-size: 0.76rem;
+  color: #7a9ab8;
+  background: #141e28;
   border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-  margin-top: 0.5rem;
-}
-
-/* ── Tool result badge ── */
-.tool-result {
-  background: #060d12;
-  border: 1px solid #22d3a522;
-  border-left: 3px solid #22d3a5;
-  border-radius: 8px;
-  padding: 0.7rem 1rem;
-  margin: 0.6rem 0;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.78rem;
-  color: #64748b;
-}
-.tool-result-label {
-  color: #22d3a5;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-bottom: 0.3rem;
-}
-
-/* ── Denied badge ── */
-.denied-badge {
-  display: inline-block;
-  background: #1f0a0a;
-  border: 1px solid #ef444433;
-  color: #f87171;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.72rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 4px;
-  margin: 0.4rem 0;
-}
-
-/* ── Input ── */
-.stChatInput > div {
-  background: #0d1117 !important;
-  border: 1px solid #1e2533 !important;
-  border-radius: 10px !important;
-}
-.stChatInput textarea {
-  background: transparent !important;
-  color: #e2e8f0 !important;
-  font-family: 'Outfit', sans-serif !important;
-}
-.stChatInput button {
-  background: #22d3a5 !important;
-  border-radius: 7px !important;
+  padding: 0.4rem 0.6rem;
+  white-space: pre;
 }
 
 /* ── Approve/Deny buttons ── */
-div[data-testid="column"]:nth-child(1) .stButton > button {
-  background: #064e3b !important;
-  color: #34d399 !important;
-  border: 1px solid #059669 !important;
-  font-family: 'Space Mono', monospace !important;
-  font-size: 0.78rem !important;
-  letter-spacing: 0.08em !important;
-  border-radius: 6px !important;
-  width: 100% !important;
-}
 div[data-testid="column"]:nth-child(2) .stButton > button {
-  background: #450a0a !important;
-  color: #f87171 !important;
-  border: 1px solid #dc2626 !important;
-  font-family: 'Space Mono', monospace !important;
+  background: #1a4a2e !important;
+  color: #5bbf82 !important;
+  border: 1px solid #2d6b45 !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 0.78rem !important;
-  letter-spacing: 0.08em !important;
-  border-radius: 6px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 0.4rem 1rem !important;
   width: 100% !important;
 }
+div[data-testid="column"]:nth-child(2) .stButton > button:hover {
+  background: #1f5c38 !important;
+}
+div[data-testid="column"]:nth-child(3) .stButton > button {
+  background: #3a1a1a !important;
+  color: #e05a5a !important;
+  border: 1px solid #6b2d2d !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 0.4rem 1rem !important;
+  width: 100% !important;
+}
+div[data-testid="column"]:nth-child(3) .stButton > button:hover {
+  background: #4a2020 !important;
+}
 
-/* ── Spinner ── */
-.stSpinner > div { border-top-color: #22d3a5 !important; }
+/* ── Chat input ── */
+.stChatInput > div {
+  background: #212d3b !important;
+  border: 1px solid #2a3f57 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  margin: 0.5rem 1rem 1rem !important;
+}
+.stChatInput > div:focus-within {
+  border-color: #3a7bd5 !important;
+}
+.stChatInput textarea {
+  background: transparent !important;
+  color: #e8e8e8 !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.9rem !important;
+}
+.stChatInput textarea::placeholder { color: #4a5e72 !important; }
+.stChatInput button {
+  background: #2b5278 !important;
+  border-radius: 8px !important;
+}
+.stChatInput button:hover { background: #3a6898 !important; }
 
-/* ── Scrollable chat ── */
-.chat-area { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+/* ── Empty state ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4rem 1rem 2rem;
+  text-align: center;
+  color: #8a9ab0;
+}
+.empty-icon { font-size: 2.8rem; margin-bottom: 0.8rem; opacity: 0.7; }
+.empty-title { font-size: 1rem; font-weight: 600; color: #c5d5e5; margin-bottom: 0.4rem; }
+.empty-sub { font-size: 0.82rem; line-height: 1.6; max-width: 260px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 1.2rem; }
+.chip {
+  font-size: 0.78rem;
+  color: #7ab3d4;
+  background: rgba(58,123,213,0.1);
+  border: 1px solid rgba(58,123,213,0.22);
+  border-radius: 8px;
+  padding: 0.3rem 0.75rem;
+}
 
-/* Hide branding */
-#MainMenu, footer, header { visibility: hidden; }
+.stSpinner > div { border-top-color: #3a7bd5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Header ───────────────────────────────────────────────────────────────
+# ── Topbar ────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="agent-header">
-  <div class="agent-dot"></div>
+<div class="topbar">
+  <div class="tb-avatar">🏙️</div>
   <div>
-    <div class="agent-title">CITY AGENT</div>
-    <div class="agent-sub">Weather · News</div>
+    <div class="tb-name">City Agent</div>
+    <div class="tb-status"><span class="tb-dot"></span> online</div>
+  </div>
+  <div class="tb-pills">
+    <span class="tb-pill">☁ Weather</span>
+    <span class="tb-pill">📰 News</span>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
-    st.session_state.messages = []          # chat history for display
+    st.session_state.messages = []
 if "lc_messages" not in st.session_state:
-    st.session_state.lc_messages = []       # langchain message objects
+    st.session_state.lc_messages = []
 if "pending_tool_call" not in st.session_state:
-    st.session_state.pending_tool_call = None   # waiting for approval
+    st.session_state.pending_tool_call = None
 if "processing" not in st.session_state:
     st.session_state.processing = False
 
@@ -263,7 +370,7 @@ def get_news(city: str) -> str:
     news_list = []
     for r in results:
         title = r.get("title", "No title")
-        url = r.get("url", "")
+        url   = r.get("url", "")
         snippet = r.get("content", "")[:120]
         news_list.append(f"• {title}\n  {url}\n  {snippet}...")
     return f"Latest news in {city}:\n\n" + "\n\n".join(news_list)
@@ -274,7 +381,6 @@ tools_by_name = {t.name: t for t in tools}
 llm = ChatMistralAI(model="mistral-small-2506")
 llm_with_tools = llm.bind_tools(tools)
 
-# ── Helper: run one LLM step ──────────────────────────────────────────────
 def call_llm():
     response = llm_with_tools.invoke(st.session_state.lc_messages)
     st.session_state.lc_messages.append(response)
@@ -287,56 +393,94 @@ def execute_tool(tool_call):
     st.session_state.lc_messages.append(tm)
     return result
 
-# ── Render chat history ────────────────────────────────────────────────────
-def render_history():
-    for item in st.session_state.messages:
-        kind = item["kind"]
+# ── Chat area ─────────────────────────────────────────────────────────────
+st.markdown('<div class="chat-area">', unsafe_allow_html=True)
 
-        if kind == "user":
-            st.markdown(f"""
-<div class="msg-row user">
-  <div class="avatar user">You</div>
-  <div class="bubble user">{item['text']}</div>
-</div>""", unsafe_allow_html=True)
+if not st.session_state.messages:
+    st.markdown("""
+<div class="empty">
+  <div class="empty-icon">🏙️</div>
+  <div class="empty-title">City Agent</div>
+  <div class="empty-sub">Ask me about the weather or latest news in any Indian city.</div>
+  <div class="chips">
+    <span class="chip">☁ Weather in Mumbai</span>
+    <span class="chip">📰 News in Delhi</span>
+    <span class="chip">🌡 How's Bangalore?</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-        elif kind == "bot":
-            st.markdown(f"""
-<div class="msg-row">
-  <div class="avatar bot">🤖</div>
-  <div class="bubble bot">{item['text']}</div>
-</div>""", unsafe_allow_html=True)
+prev_kind = None
+for item in st.session_state.messages:
+    kind = item["kind"]
 
-        elif kind == "tool_result":
-            icon = "🌤️" if item["tool"] == "get_weather" else "📰"
-            st.markdown(f"""
-<div class="tool-result">
-  <div class="tool-result-label">{icon} {item['tool']} result</div>
-  {item['text']}
-</div>""", unsafe_allow_html=True)
+    if kind == "user":
+        st.markdown(f"""
+<div class="row-out">
+  <div class="bbl bbl-out">
+    {item['text']}
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-        elif kind == "denied":
-            st.markdown(f'<div class="denied-badge">⛔ {item["tool"]} — denied by user</div>',
-                        unsafe_allow_html=True)
+    elif kind == "bot":
+        show_av = prev_kind not in ("bot", "tool_result")
+        av = '<div class="in-avatar">🏙</div>' if show_av else '<div class="in-avatar ghost"></div>'
+        st.markdown(f"""
+<div class="row-in">
+  {av}
+  <div class="bbl bbl-in">{item['text']}</div>
+</div>
+""", unsafe_allow_html=True)
 
-render_history()
+    elif kind == "tool_result":
+        is_w = item["tool"] == "get_weather"
+        cls   = "weather" if is_w else "news"
+        icon  = "☁ Weather" if is_w else "📰 News"
+        show_av = prev_kind not in ("bot", "tool_result")
+        av = '<div class="in-avatar">🏙</div>' if show_av else '<div class="in-avatar ghost"></div>'
+        st.markdown(f"""
+<div class="tool-row">
+  {av}
+  <div class="tool-card {cls}">
+    <div class="tool-label {cls}">{icon} result</div>
+    {item['text']}
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-# ── Pending tool-call approval UI ─────────────────────────────────────────
+    elif kind == "denied":
+        st.markdown(f"""
+<div class="denied-row">
+  <span class="denied-pill">🚫 {item['tool']} denied</span>
+</div>
+""", unsafe_allow_html=True)
+
+    prev_kind = kind
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ── Approval card ─────────────────────────────────────────────────────────
 if st.session_state.pending_tool_call:
     tc = st.session_state.pending_tool_call
     tool_name = tc["name"]
     tool_args = tc["args"]
-    icon = "🌤️" if tool_name == "get_weather" else "📰"
+    icon = "☁" if tool_name == "get_weather" else "📰"
 
     st.markdown(f"""
-<div class="approval-card">
-  <div class="approval-tag">⚠ Tool Call — Awaiting Approval</div>
-  <div class="approval-tool">{icon} {tool_name}</div>
-  <div class="approval-args">{json.dumps(tool_args, indent=2)}</div>
-</div>""", unsafe_allow_html=True)
+<div class="appr-row">
+  <div class="in-avatar">🏙</div>
+  <div class="appr-card">
+    <div class="appr-tag">⚡ Tool request</div>
+    <div class="appr-fn">{icon} {tool_name}()</div>
+    <div class="appr-args">{json.dumps(tool_args, indent=2)}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    col_a, col_d = st.columns(2)
+    _, col_a, col_d, _ = st.columns([0.28, 1, 1, 1.8])
     with col_a:
-        if st.button("✓ Approve", key="approve_btn"):
+        if st.button("✓ Allow", key="approve_btn"):
             with st.spinner(f"Running {tool_name}…"):
                 result = execute_tool(tc)
             st.session_state.messages.append({"kind": "tool_result", "tool": tool_name, "text": result})
@@ -352,36 +496,28 @@ if st.session_state.pending_tool_call:
             st.session_state.processing = True
             st.rerun()
 
-# ── Continue agent after approval/denial ──────────────────────────────────
+# ── Continue processing ───────────────────────────────────────────────────
 if st.session_state.processing and not st.session_state.pending_tool_call:
-    with st.spinner("Thinking…"):
+    with st.spinner("typing…"):
         response = call_llm()
-
     if response.tool_calls:
-        # More tools to approve
         st.session_state.pending_tool_call = response.tool_calls[0]
         st.session_state.processing = False
     else:
-        # Final answer
-        answer = response.content
-        st.session_state.messages.append({"kind": "bot", "text": answer})
+        st.session_state.messages.append({"kind": "bot", "text": response.content})
         st.session_state.processing = False
     st.rerun()
 
-# ── Chat input ────────────────────────────────────────────────────────────
+# ── Input ─────────────────────────────────────────────────────────────────
 if not st.session_state.pending_tool_call and not st.session_state.processing:
-    user_input = st.chat_input("Ask about weather or news in any city…")
+    user_input = st.chat_input("Message City Agent…")
     if user_input:
-        # Add user message
         st.session_state.messages.append({"kind": "user", "text": user_input})
         st.session_state.lc_messages.append(HumanMessage(content=user_input))
-
-        with st.spinner("Thinking…"):
+        with st.spinner("typing…"):
             response = call_llm()
-
         if response.tool_calls:
             st.session_state.pending_tool_call = response.tool_calls[0]
         else:
             st.session_state.messages.append({"kind": "bot", "text": response.content})
-
         st.rerun()
